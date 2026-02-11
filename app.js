@@ -70,11 +70,7 @@ class ShuttleTracker {
     }
     
     renderRoutes() {
-        const searchTerm = document.getElementById('search').value.toLowerCase();
-        const filteredRoutes = this.routes.filter(route => 
-            route.name.toLowerCase().includes(searchTerm) ||
-            route.shortName.toLowerCase().includes(searchTerm)
-        );
+        const filteredRoutes = this.routes;
         
         const activeRoutes = filteredRoutes.filter(route => {
             const status = this.getRouteStatus(route);
@@ -87,13 +83,32 @@ class ShuttleTracker {
             document.getElementById('routes').innerHTML = `
                 <div class="empty-state">
                     <h3>No routes found</h3>
-                    <p>Try a different search term</p>
+                    <p>Check back later for available routes</p>
                 </div>
             `;
             return;
         }
         
-        const routesHtml = filteredRoutes.map(route => {
+        // Sort routes: running/late first, then not running
+        const sortedRoutes = filteredRoutes.sort((a, b) => {
+            const statusA = this.getRouteStatus(a);
+            const statusB = this.getRouteStatus(b);
+            
+            // Both have same status, maintain original order
+            if (statusA === statusB) return 0;
+            
+            // running and late come before not-running
+            if ((statusA === 'running' || statusA === 'late') && statusB === 'not-running') return -1;
+            if ((statusB === 'running' || statusB === 'late') && statusA === 'not-running') return 1;
+            
+            // late comes after running but before not-running
+            if (statusA === 'running' && statusB === 'late') return -1;
+            if (statusA === 'late' && statusB === 'running') return 1;
+            
+            return 0;
+        });
+        
+        const routesHtml = sortedRoutes.map(route => {
             const status = this.getRouteStatus(route);
             let statusText, statusIcon;
             
@@ -120,9 +135,7 @@ class ShuttleTracker {
     }
     
     setupEventListeners() {
-        document.getElementById('search').addEventListener('input', () => {
-            this.renderRoutes();
-        });
+        // No search functionality needed
     }
 }
 
