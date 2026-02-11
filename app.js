@@ -39,7 +39,7 @@ class ShuttleTracker {
             return status === 'running' || status === 'late';
         });
         
-        document.title = `Harvard GO - ${activeRoutes.length} Active Routes`;
+        document.title = `Harvard Go! - ${activeRoutes.length} Active Routes`;
     }
     
     updateDateTime() {
