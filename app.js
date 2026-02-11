@@ -31,26 +31,15 @@ class ShuttleTracker {
     
     updateDateTime() {
         const now = new Date();
-        const dateOptions = { 
+        const options = { 
             weekday: 'long', 
             year: 'numeric', 
             month: 'long', 
-            day: 'numeric'
-        };
-        const timeOptions = { 
+            day: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
         };
-        
-        const dateElement = document.getElementById('currentDate');
-        const timeElement = document.getElementById('currentTime');
-        
-        if (dateElement) {
-            dateElement.textContent = now.toLocaleDateString('en-US', dateOptions);
-        }
-        if (timeElement) {
-            timeElement.textContent = now.toLocaleTimeString('en-US', timeOptions);
-        }
+        document.getElementById('datetime').textContent = now.toLocaleDateString('en-US', options);
     }
     
     isRouteActive(route) {
@@ -66,29 +55,17 @@ class ShuttleTracker {
     }
     
     renderRoutes() {
-        const searchElement = document.getElementById('routeSearch');
-        const routeListElement = document.getElementById('activeRouteList');
-        const activeCountElement = document.getElementById('activeCount');
-        const totalCountElement = document.getElementById('totalCount');
-        
-        if (!searchElement || !routeListElement || !activeCountElement || !totalCountElement) {
-            console.error('Required DOM elements not found');
-            return;
-        }
-
-        const searchTerm = searchElement.value.toLowerCase();
+        const searchTerm = document.getElementById('search').value.toLowerCase();
         const filteredRoutes = this.routes.filter(route => 
             route.name.toLowerCase().includes(searchTerm) ||
             route.shortName.toLowerCase().includes(searchTerm)
         );
-
-        const activeRoutes = filteredRoutes.filter(route => this.isRouteActive(route));
         
-        activeCountElement.textContent = activeRoutes.length;
-        totalCountElement.textContent = filteredRoutes.length;
+        const activeRoutes = filteredRoutes.filter(route => this.isRouteActive(route));
+        document.getElementById('stats').textContent = `${activeRoutes.length} Active Routes`;
         
         if (filteredRoutes.length === 0) {
-            routeListElement.innerHTML = `
+            document.getElementById('routes').innerHTML = `
                 <div class="empty-state">
                     <h3>No routes found</h3>
                     <p>Try a different search term</p>
@@ -96,38 +73,30 @@ class ShuttleTracker {
             `;
             return;
         }
-
+        
         const routesHtml = filteredRoutes.map(route => {
             const isActive = this.isRouteActive(route);
             return `
-                <div class="route-item ${!isActive ? 'inactive' : ''}" onclick="selectRoute('${route.id}')">
+                <div class="route ${!isActive ? 'inactive' : ''}" onclick="selectRoute('${route.id}')">
                     <div class="route-name">${route.shortName}</div>
-                    <div class="route-details">${route.name}</div>
-                    <div class="route-status">${isActive ? 'Running' : 'Not Running'}</div>
+                    <div class="route-details">${route.name} • ${isActive ? 'Running' : 'Not Running'}</div>
                 </div>
             `;
         }).join('');
         
-        routeListElement.innerHTML = routesHtml;
+        document.getElementById('routes').innerHTML = routesHtml;
     }
     
     setupEventListeners() {
-        const searchElement = document.getElementById('routeSearch');
-        if (searchElement) {
-            searchElement.addEventListener('input', () => {
-                this.renderRoutes();
-            });
-        }
+        document.getElementById('search').addEventListener('input', () => {
+            this.renderRoutes();
+        });
     }
 }
 
 function selectRoute(routeId) {
     const route = tracker.routes.find(r => r.id === routeId);
-    if (route) {
-        alert(`Selected: ${route.name} (${route.shortName})\nStatus: ${tracker.isRouteActive(route) ? 'Currently Running' : 'Not Running'}`);
-    } else {
-        console.error('Route not found:', routeId);
-    }
+    alert(`Selected: ${route.name} (${route.shortName})\nStatus: ${tracker.isRouteActive(route) ? 'Currently Running' : 'Not Running'}`);
 }
 
 // Initialize the app
