@@ -79,6 +79,9 @@ class ShuttleTracker {
         
         document.getElementById('stats').textContent = `${activeRoutes.length} Active Routes`;
         
+        // Update page title with active route count
+        document.title = `Harvard GO - ${activeRoutes.length} Active Routes`;
+        
         if (filteredRoutes.length === 0) {
             document.getElementById('routes').innerHTML = `
                 <div class="empty-state">
