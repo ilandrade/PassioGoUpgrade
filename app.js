@@ -2,9 +2,9 @@
 class ShuttleTracker {
     constructor() {
         this.routes = [
-            { id: '777', name: "1636'er", shortName: '1636' },
+            { id: '777', name: "1636er", shortName: '1636' },
             { id: '778', name: 'Allston Loop', shortName: 'AL' },
-            { id: '779', name: "Barry's Corner", shortName: 'BC' },
+            { id: '779', name: "Barrys Corner", shortName: 'BC' },
             { id: '783', name: 'Crimson Cruiser', shortName: 'CC' },
             { id: '789', name: 'Mather Express', shortName: 'ME' },
             { id: '790', name: 'Quad Express', shortName: 'QE' },
@@ -42,16 +42,31 @@ class ShuttleTracker {
         document.getElementById('datetime').textContent = now.toLocaleDateString('en-US', options);
     }
     
-    isRouteActive(route) {
+    getRouteStatus(route) {
         const currentHour = new Date().getHours();
         
         // Overnight routes run 10 PM - 4 AM
         if (route.shortName === 'ON') {
-            return currentHour >= 22 || currentHour <= 4;
+            if (currentHour >= 22 || currentHour <= 4) {
+                // Simulate some routes being late during peak hours
+                if (currentHour >= 7 && currentHour <= 9 || currentHour >= 16 && currentHour <= 18) {
+                    return Math.random() > 0.7 ? 'late' : 'running';
+                }
+                return 'running';
+            }
+            return 'not-running';
         }
         
         // Regular routes run 6 AM - 11 PM
-        return currentHour >= 6 && currentHour <= 23;
+        if (currentHour >= 6 && currentHour <= 23) {
+            // Simulate some routes being late during peak hours
+            if (currentHour >= 7 && currentHour <= 9 || currentHour >= 16 && currentHour <= 18) {
+                return Math.random() > 0.7 ? 'late' : 'running';
+            }
+            return 'running';
+        }
+        
+        return 'not-running';
     }
     
     renderRoutes() {
@@ -61,7 +76,11 @@ class ShuttleTracker {
             route.shortName.toLowerCase().includes(searchTerm)
         );
         
-        const activeRoutes = filteredRoutes.filter(route => this.isRouteActive(route));
+        const activeRoutes = filteredRoutes.filter(route => {
+            const status = this.getRouteStatus(route);
+            return status === 'running' || status === 'late';
+        });
+        
         document.getElementById('stats').textContent = `${activeRoutes.length} Active Routes`;
         
         if (filteredRoutes.length === 0) {
@@ -75,11 +94,24 @@ class ShuttleTracker {
         }
         
         const routesHtml = filteredRoutes.map(route => {
-            const isActive = this.isRouteActive(route);
+            const status = this.getRouteStatus(route);
+            let statusText, statusIcon;
+            
+            if (status === 'running') {
+                statusText = 'Running';
+                statusIcon = '🚌';
+            } else if (status === 'late') {
+                statusText = 'Delayed';
+                statusIcon = '⚠️';
+            } else {
+                statusText = 'Not Running';
+                statusIcon = '⏸️';
+            }
+            
             return `
-                <div class="route ${!isActive ? 'inactive' : ''}" onclick="selectRoute('${route.id}')">
+                <div class="route status-${status}" onclick="selectRoute('${route.id}')">
                     <div class="route-name">${route.shortName}</div>
-                    <div class="route-details">${route.name} • ${isActive ? 'Running' : 'Not Running'}</div>
+                    <div class="route-details">${route.name} • ${statusIcon} ${statusText}</div>
                 </div>
             `;
         }).join('');
@@ -96,7 +128,21 @@ class ShuttleTracker {
 
 function selectRoute(routeId) {
     const route = tracker.routes.find(r => r.id === routeId);
-    alert(`Selected: ${route.name} (${route.shortName})\nStatus: ${tracker.isRouteActive(route) ? 'Currently Running' : 'Not Running'}`);
+    const status = tracker.getRouteStatus(route);
+    let statusEmoji, statusText;
+    
+    if (status === 'running') {
+        statusEmoji = '🚌';
+        statusText = 'Currently Running';
+    } else if (status === 'late') {
+        statusEmoji = '⚠️';
+        statusText = 'Running Late';
+    } else {
+        statusEmoji = '⏸️';
+        statusText = 'Not Running';
+    }
+    
+    alert(`Harvard GO - Selected Route\n\n${route.name} (${route.shortName})\nStatus: ${statusEmoji} ${statusText}`);
 }
 
 // Initialize the app
