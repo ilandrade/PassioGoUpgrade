@@ -171,7 +171,7 @@ function selectRoute(routeId) {
         statusText = 'Not Running';
     }
     
-    alert(`Harvard GO - Selected Route\n\n${route.name} (${route.shortName})\nStatus: ${statusEmoji} ${statusText}`);
+    alert(`Harvard Go! - Selected Route\n\n${route.name} (${route.shortName})\nStatus: ${statusEmoji} ${statusText}`);
 }
 
 // Initialize the app
