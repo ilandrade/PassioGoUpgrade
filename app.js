@@ -22,11 +22,24 @@ class ShuttleTracker {
         this.renderRoutes();
         this.setupEventListeners();
         
+        // Update page title immediately
+        this.updatePageTitle();
+        
         // Update every minute
         setInterval(() => {
             this.updateDateTime();
             this.renderRoutes();
+            this.updatePageTitle();
         }, 60000);
+    }
+    
+    updatePageTitle() {
+        const activeRoutes = this.routes.filter(route => {
+            const status = this.getRouteStatus(route);
+            return status === 'running' || status === 'late';
+        });
+        
+        document.title = `Harvard GO - ${activeRoutes.length} Active Routes`;
     }
     
     updateDateTime() {
