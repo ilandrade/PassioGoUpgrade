@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PassioGo Route Picker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <header class="sidebar-header">
+                <h1>PassioGo</h1>
+                <div class="datetime-display">
+                    <div class="date" id="currentDate"></div>
+                    <div class="time" id="currentTime"></div>
+                </div>
+            </header>
+            
+            <div class="active-routes-section">
+                <h2>Active Routes</h2>
+                <div class="search-container">
+                    <input type="text" id="routeSearch" placeholder="Search active routes...">
+                </div>
+                
+                <div id="activeRouteList" class="active-route-list">
+                    <!-- Active routes will be dynamically inserted here -->
+                </div>
+                
+                <div class="route-stats" id="routeStats">
+                    <div class="stat-item">
+                        <span class="stat-number" id="activeCount">0</span>
+                        <span class="stat-label">Active</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="totalCount">0</span>
+                        <span class="stat-label">Total</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+            
+            <div class="bottom-panels">
+                <div class="selected-route" id="selectedRoute">
+                    <h3>Selected Route</h3>
+                    <div id="routeDetails">
+                        <p>No route selected</p>
+                    </div>
+                </div>
+                
+                <div class="service-alerts-container" id="serviceAlerts">
+                    <!-- Service alerts will be dynamically inserted here -->
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Google Maps API -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCfTuIzax3bmW1Jr-waQrJH2w7VQ1dq-JI&callback=initMap"></script>
+    
+    <!-- Main Application -->
+    <script src="PassioGoAPI.js"></script>
+    <script src="RoutePicker.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

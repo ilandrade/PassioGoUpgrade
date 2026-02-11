@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Local GTFS Files</title>
+</head>
+<body>
+    <h1>Testing Local GTFS File Loading</h1>
+    <div id="results"></div>
+    
+    <script>
+        const results = document.getElementById('results');
+        
+        async function testLocalFile(filename) {
+            results.innerHTML += `<h3>Testing ${filename}</h3>`;
+            try {
+                const response = await fetch(`./gtfs/${filename}`);
+                results.innerHTML += `<p>✅ Status: ${response.status} ${response.statusText}</p>`;
+                const text = await response.text();
+                results.innerHTML += `<p>✅ Data length: ${text.length} characters</p>`;
+                results.innerHTML += `<p>✅ First 200 chars: ${text.substring(0, 200)}...</p>`;
+                
+                // Test basic CSV parsing
+                const lines = text.trim().split('\n');
+                results.innerHTML += `<p>✅ Lines count: ${lines.length}</p>`;
+                if (lines.length > 0) {
+                    const headers = lines[0].split(',');
+                    results.innerHTML += `<p>✅ Headers: ${headers.join(', ')}</p>`;
+                }
+                
+                return text;
+            } catch (error) {
+                results.innerHTML += `<p>❌ Error: ${error.message}</p>`;
+                return null;
+            }
+            results.innerHTML += `<hr>`;
+        }
+        
+        // Test local files
+        testLocalFile('routes.txt');
+        testLocalFile('trips.txt');
+        testLocalFile('calendar.txt');
+    </script>
+</body>
+</html>

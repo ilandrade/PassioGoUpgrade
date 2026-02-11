@@ -1,0 +1,38 @@
+{
+  "name": "passiogo-route-picker",
+  "version": "1.0.0",
+  "description": "A comprehensive JavaScript-based route picker application that integrates with PassioGo transit data and Google Maps API",
+  "main": "app.js",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "dev": "python3 -m http.server 8000 --bind 127.0.0.1",
+    "build": "echo 'No build process needed - static files ready'",
+    "test": "echo 'No tests specified yet'",
+    "lint": "echo 'No linting configured yet'"
+  },
+  "keywords": [
+    "transit",
+    "bus",
+    "routes",
+    "passiogo",
+    "google-maps",
+    "javascript",
+    "real-time",
+    "schedule"
+  ],
+  "author": "PassioGo Development Team",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/passiogo-route-picker.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/passiogo-route-picker/issues"
+  },
+  "homepage": "https://github.com/your-org/passiogo-route-picker#readme",
+  "engines": {
+    "node": ">=12.0.0"
+  }
+}
