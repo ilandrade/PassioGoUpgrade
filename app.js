@@ -326,6 +326,13 @@ function selectRoute(routeId) {
     tracker.selectRoute(routeId);
 }
 
+function selectRouteByShortName(shortName) {
+    const route = tracker.routes.find(r => r.shortName === shortName);
+    if (route) {
+        tracker.selectRoute(route.id);
+    }
+}
+
 function showDaySchedule(dayIndex) {
     tracker.showDaySchedule(dayIndex);
 }
