@@ -238,74 +238,86 @@ class ShuttleTracker {
             btn.classList.toggle('active', index === dayIndex);
         });
         
-        const schedule = this.getDaySchedule(dayIndex);
-        const scheduleHtml = schedule.map(block => {
-            const routeChips = block.routes.map(route => 
-                `<span class="route-chip">${route}</span>`
-            ).join('');
-            
-            return `
-                <div class="schedule-time-block">
-                    <div class="time-label">${block.time}</div>
-                    <div class="route-chips">${routeChips}</div>
-                </div>
-            `;
-        }).join('');
-        
-        document.getElementById('schedule-details').innerHTML = scheduleHtml;
+        const schedule = this.getDayScheduleBlocks(dayIndex);
+        this.renderHorizontalSchedule(schedule);
     }
     
-    getDaySchedule(dayIndex) {
-        // Sunday = 0, Saturday = 6
+    getDayScheduleBlocks(dayIndex) {
         const isWeekend = dayIndex === 0 || dayIndex === 6;
         
         if (isWeekend) {
             return [
-                { time: '8:00 AM', routes: ['1636', 'AL'] },
-                { time: '9:00 AM', routes: ['1636', 'AL'] },
-                { time: '10:00 AM', routes: ['1636', 'AL', 'QE'] },
-                { time: '11:00 AM', routes: ['1636', 'AL', 'QE'] },
-                { time: '12:00 PM', routes: ['1636', 'AL', 'QE'] },
-                { time: '1:00 PM', routes: ['1636', 'AL', 'QE'] },
-                { time: '2:00 PM', routes: ['1636', 'AL', 'QE'] },
-                { time: '3:00 PM', routes: ['1636', 'AL', 'QE'] },
-                { time: '4:00 PM', routes: ['1636', 'AL', 'QE'] },
-                { time: '5:00 PM', routes: ['1636', 'AL', 'QE'] },
-                { time: '6:00 PM', routes: ['1636', 'AL'] },
-                { time: '7:00 PM', routes: ['1636', 'AL'] },
-                { time: '8:00 PM', routes: ['1636', 'AL'] },
-                { time: '9:00 PM', routes: ['1636', 'AL'] },
-                { time: '10:00 PM', routes: ['1636', 'AL'] },
-                { time: '11:00 PM', routes: ['ON'] },
-                { time: '12:00 AM', routes: ['ON'] },
-                { time: '1:00 AM', routes: ['ON'] },
-                { time: '2:00 AM', routes: ['ON'] }
+                { route: '1636', start: 8, end: 23, type: 'regular' },
+                { route: 'AL', start: 8, end: 23, type: 'regular' },
+                { route: 'QE', start: 10, end: 19, type: 'weekend-only' },
+                { route: 'ON', start: 23, end: 27, type: 'overnight' } // 23:00 to 3:00 (27:00)
             ];
         } else {
             return [
-                { time: '6:00 AM', routes: ['1636'] },
-                { time: '7:00 AM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
-                { time: '8:00 AM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
-                { time: '9:00 AM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
-                { time: '10:00 AM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
-                { time: '11:00 AM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
-                { time: '12:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
-                { time: '1:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
-                { time: '2:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
-                { time: '3:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
-                { time: '4:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
-                { time: '5:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
-                { time: '6:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
-                { time: '7:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
-                { time: '8:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
-                { time: '9:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
-                { time: '10:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
-                { time: '11:00 PM', routes: ['ON'] },
-                { time: '12:00 AM', routes: ['ON'] },
-                { time: '1:00 AM', routes: ['ON'] },
-                { time: '2:00 AM', routes: ['ON'] }
+                { route: '1636', start: 6, end: 23, type: 'regular' },
+                { route: 'AL', start: 7, end: 23, type: 'regular' },
+                { route: 'BC', start: 7, end: 23, type: 'regular' },
+                { route: 'CC', start: 7, end: 23, type: 'regular' },
+                { route: 'ME', start: 7, end: 23, type: 'regular' },
+                { route: 'QE', start: 7, end: 23, type: 'regular' },
+                { route: 'QYE', start: 7, end: 23, type: 'regular' },
+                { route: 'ON', start: 23, end: 27, type: 'overnight' } // 23:00 to 3:00 (27:00)
             ];
         }
+    }
+    
+    renderHorizontalSchedule(schedule) {
+        // Create time slots from 6AM to 3AM (next day)
+        const timeSlots = [];
+        for (let hour = 6; hour <= 27; hour++) {
+            if (hour <= 24) {
+                timeSlots.push(hour === 24 ? '12AM' : (hour < 12 ? hour + 'AM' : (hour === 12 ? '12PM' : (hour - 12) + 'PM')));
+            } else {
+                timeSlots.push((hour - 24) + 'AM');
+            }
+        }
+        
+        // Create time header
+        const timeHeaderHtml = timeSlots.map(time => 
+            `<div class="time-slot">${time}</div>`
+        ).join('');
+        
+        // Calculate total width and route block positions
+        const totalSlots = timeSlots.length;
+        const slotWidth = 100 / totalSlots;
+        
+        // Create route blocks
+        const routeBlocksHtml = schedule.map((route, index) => {
+            const left = ((route.start - 6) / totalSlots) * 100;
+            const width = ((route.end - route.start) / totalSlots) * 100;
+            const top = 20 + (index * 35); // Stack routes vertically
+            
+            return `
+                <div class="route-block ${route.type}" 
+                     style="left: ${left}%; width: ${width}%; top: ${top}px;"
+                     onclick="selectRouteByShortName('${route.route}')"
+                     title="${route.route}: ${this.formatTime(route.start)} - ${this.formatTime(route.end)}">
+                    ${route.route}
+                </div>
+            `;
+        }).join('');
+        
+        const scheduleHtml = `
+            <div class="schedule-container">
+                <div class="time-header">${timeHeaderHtml}</div>
+                <div class="schedule-body">${routeBlocksHtml}</div>
+            </div>
+        `;
+        
+        document.getElementById('schedule-details').innerHTML = scheduleHtml;
+    }
+    
+    formatTime(hour) {
+        if (hour === 24) return '12AM';
+        if (hour < 12) return hour + 'AM';
+        if (hour === 12) return '12PM';
+        if (hour > 24) return (hour - 24) + 'AM';
+        return (hour - 12) + 'PM';
     }
 }
 
