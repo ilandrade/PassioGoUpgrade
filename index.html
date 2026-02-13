@@ -51,6 +51,84 @@
             max-height: 500px;
             overflow-y: auto;
         }
+        .calendar-toolbar {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .week-days {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .day-btn {
+            flex: 1;
+            margin: 0 2px;
+            padding: 8px 4px;
+            border: 1px solid #dee2e6;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        .day-btn:hover {
+            background: #e9ecef;
+        }
+        .day-btn.active {
+            background: #A51C30;
+            color: white;
+            border-color: #A51C30;
+        }
+        .day-name {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 2px;
+        }
+        .day-date {
+            font-size: 10px;
+            opacity: 0.8;
+        }
+        .day-schedule {
+            font-size: 9px;
+            margin-top: 2px;
+            opacity: 0.7;
+        }
+        .schedule-details {
+            background: white;
+            padding: 15px 20px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 12px;
+        }
+        .schedule-time-block {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        .time-label {
+            font-weight: bold;
+            color: #A51C30;
+            width: 60px;
+            font-size: 11px;
+        }
+        .route-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-left: 10px;
+        }
+        .route-chip {
+            background: #28a745;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+        }
         .route {
             color: white;
             padding: 15px;
@@ -77,12 +155,6 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
         }
-        .route.status-late:hover {
-            box-shadow: 0 6px 16px rgba(255, 193, 7, 0.4);
-        }
-        .route.status-running:hover {
-            box-shadow: 0 6px 16px rgba(40, 167, 69, 0.3);
-        }
         .route.selected {
             box-shadow: 0 0 0 3px rgba(165, 28, 48, 0.5);
         }
@@ -90,18 +162,10 @@
             font-size: 18px;
             font-weight: bold;
             margin-bottom: 5px;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
         }
         .route-details {
             font-size: 14px;
             opacity: 0.9;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-        .route.status-late .route-details {
-            opacity: 1;
-            font-weight: 500;
         }
         .empty-state {
             text-align: center;
@@ -111,6 +175,14 @@
         .empty-state h3 {
             color: #A51C30;
             margin-bottom: 8px;
+        }
+        .schedule-info {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 12px;
+            color: #6c757d;
+            text-align: center;
         }
     </style>
 </head>
@@ -122,6 +194,21 @@
             <div class="datetime" id="datetime">Loading...</div>
             <div class="stats" id="stats">0 Active Routes</div>
         </div>
+        
+        <!-- Calendar Toolbar -->
+        <div class="calendar-toolbar">
+            <div class="week-days" id="week-days">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </div>
+        
+        <!-- Schedule Details -->
+        <div class="schedule-details" id="schedule-details">
+            <div style="text-align: center; color: #6c757d;">
+                Click a day above to see detailed schedule
+            </div>
+        </div>
+        
         <div class="routes" id="routes">
             Loading routes...
         </div>

@@ -1,10 +1,10 @@
-// Harvard Shuttle Tracker - Real-time Version
+// Harvard Go! Shuttle Tracker
 class ShuttleTracker {
     constructor() {
         this.routes = [
             { id: '777', name: "1636er", shortName: '1636' },
             { id: '778', name: 'Allston Loop', shortName: 'AL' },
-            { id: '779', name: "Barrys Corner", shortName: 'BC' },
+            { id: '779', name: "Barry's Corner", shortName: 'BC' },
             { id: '783', name: 'Crimson Cruiser', shortName: 'CC' },
             { id: '789', name: 'Mather Express', shortName: 'ME' },
             { id: '790', name: 'Quad Express', shortName: 'QE' },
@@ -22,128 +22,81 @@ class ShuttleTracker {
         this.updateDateTime();
         this.fetchRealtimeData();
         this.renderRoutes();
-        this.setupEventListeners();
+        this.initCalendar();
         
-        // Update page title immediately
-        this.updatePageTitle();
-        
-        // Update every 30 seconds for real-time data
+        // Update every 30 seconds
         setInterval(() => {
             this.updateDateTime();
             this.fetchRealtimeData();
             this.renderRoutes();
             this.updatePageTitle();
         }, 30000);
+        
+        this.updatePageTitle();
     }
     
     async fetchRealtimeData() {
         try {
-            // Harvard's JSON stream for real-time vehicle data
             const response = await fetch('https://passio3.com/api/realtime/harvard');
             if (response.ok) {
                 const data = await response.json();
                 this.realtimeData = data;
-                console.log('Real-time data updated:', data);
+                console.log('Real-time data updated');
             }
         } catch (error) {
-            console.log('Unable to fetch real-time data, using fallback schedules');
-            // Fallback to static schedules if real-time data fails
+            console.log('Using fallback schedules');
         }
     }
     
     getRouteStatus(route) {
-        // If we have real-time data, use it
+        // Try real-time data first
         if (this.realtimeData && this.realtimeData.vehiclePositions) {
             const vehicles = this.realtimeData.vehiclePositions.filter(vehicle => 
                 vehicle.vehicle.routeId === route.id
             );
             
             if (vehicles.length > 0) {
-                // Check if any vehicles are delayed
-                const hasDelayedVehicle = vehicles.some(vehicle => 
-                    vehicle.vehicle.timestamp && this.isVehicleDelayed(vehicle)
-                );
-                
-                return hasDelayedVehicle ? 'late' : 'running';
+                return 'running';
             }
         }
         
-        // Fallback to static schedule logic
+        // Fallback to static schedules
         return this.getStaticRouteStatus(route);
-    }
-    
-    isVehicleDelayed(vehicle) {
-        // Simple delay detection based on timestamp
-        const now = Date.now();
-        const vehicleTime = vehicle.vehicle.timestamp * 1000; // Convert to milliseconds
-        const timeDiff = Math.abs(now - vehicleTime);
-        
-        // If vehicle data is more than 5 minutes old, consider it delayed
-        return timeDiff > 5 * 60 * 1000;
     }
     
     getStaticRouteStatus(route) {
         const currentHour = new Date().getHours();
-        const currentDay = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
+        const currentDay = new Date().getDay();
         
-        // Based on Harvard shuttle schedules from transportation.harvard.edu
-        switch (route.shortName) {
-            case '1636': // 1636er - M-F 6AM-11PM, Sat-Sun 8AM-11PM
-                if (currentDay >= 1 && currentDay <= 5) { // Weekdays
-                    return currentHour >= 6 && currentHour < 23 ? 'running' : 'not-running';
-                } else { // Weekends
-                    return currentHour >= 8 && currentHour < 23 ? 'running' : 'not-running';
-                }
-                
-            case 'AL': // Allston Loop - M-F 7AM-11PM, Sat-Sun 8AM-11PM
-                if (currentDay >= 1 && currentDay <= 5) { // Weekdays
-                    return currentHour >= 7 && currentHour < 23 ? 'running' : 'not-running';
-                } else { // Weekends
-                    return currentHour >= 8 && currentHour < 23 ? 'running' : 'not-running';
-                }
-                
-            case 'BC': // Barry's Corner - M-F 7AM-11PM
-                if (currentDay >= 1 && currentDay <= 5) { // Weekdays only
-                    return currentHour >= 7 && currentHour < 23 ? 'running' : 'not-running';
-                }
-                return 'not-running';
-                
-            case 'CC': // Crimson Cruiser - M-F 7AM-11PM
-                if (currentDay >= 1 && currentDay <= 5) { // Weekdays only
-                    return currentHour >= 7 && currentHour < 23 ? 'running' : 'not-running';
-                }
-                return 'not-running';
-                
-            case 'ME': // Mather Express - M-F 7AM-11PM
-                if (currentDay >= 1 && currentDay <= 5) { // Weekdays only
-                    return currentHour >= 7 && currentHour < 23 ? 'running' : 'not-running';
-                }
-                return 'not-running';
-                
-            case 'QE': // Quad Express - M-F 7AM-11PM, Sat-Sun 10AM-7PM
-                if (currentDay >= 1 && currentDay <= 5) { // Weekdays
-                    return currentHour >= 7 && currentHour < 23 ? 'running' : 'not-running';
-                } else { // Weekends
-                    return currentHour >= 10 && currentHour < 19 ? 'running' : 'not-running';
-                }
-                
-            case 'ON': // Overnight - Daily 11PM-3AM
-                return currentHour >= 23 || currentHour < 3 ? 'running' : 'not-running';
-                
-            case 'QSD': // Quad Stadium Direct - Special events only
-                return 'not-running'; // Not regular service
-                
-            case 'QSE': // Quad Stadium Express - Special events only
-                return 'not-running'; // Not regular service
-                
-            case 'QYE': // Quad Yard Express - M-F 7AM-11PM
-                if (currentDay >= 1 && currentDay <= 5) { // Weekdays only
-                    return currentHour >= 7 && currentHour < 23 ? 'running' : 'not-running';
-                }
-                return 'not-running';
-                
-            default:
-                return 'not-running';
+        const schedules = {
+            '1636': { weekdays: [6, 23], weekends: [8, 23] },
+            'AL': { weekdays: [7, 23], weekends: [8, 23] },
+            'BC': { weekdays: [7, 23] },
+            'CC': { weekdays: [7, 23] },
+            'ME': { weekdays: [7, 23] },
+            'QE': { weekdays: [7, 23], weekends: [10, 19] },
+            'ON': { daily: [23, 3] },
+            'QSD': {},
+            'QSE': {},
+            'QYE': { weekdays: [7, 23] }
+        };
+        
+        const schedule = schedules[route.shortName];
+        if (!schedule || Object.keys(schedule).length === 0) {
+            return 'not-running';
+        }
+        
+        if (schedule.daily) {
+            const [start, end] = schedule.daily;
+            return (currentHour >= start || currentHour < end) ? 'running' : 'not-running';
+        }
+        
+        if (currentDay >= 1 && currentDay <= 5) {
+            const [start, end] = schedule.weekdays;
+            return currentHour >= start && currentHour < end ? 'running' : 'not-running';
+        } else {
+            const [start, end] = schedule.weekends;
+            return currentHour >= start && currentHour < end ? 'running' : 'not-running';
         }
     }
     
@@ -153,9 +106,7 @@ class ShuttleTracker {
             return status === 'running' || status === 'late';
         });
         
-        const newTitle = `Harvard Go! - ${activeRoutes.length} Active Routes`;
-        document.title = newTitle;
-        console.log('Title updated to:', newTitle); // Debug log
+        document.title = `Harvard Go! - ${activeRoutes.length} Active Routes`;
     }
     
     updateDateTime() {
@@ -172,67 +123,35 @@ class ShuttleTracker {
     }
     
     renderRoutes() {
-        // Only show routes that are running or late, hide not-running ones
-        const filteredRoutes = this.routes.filter(route => {
+        // Show all routes with their current status
+        const sortedRoutes = this.routes.sort((a, b) => {
+            const statusA = this.getRouteStatus(a);
+            const statusB = this.getRouteStatus(b);
+            
+            // Running routes first
+            if (statusA === 'running' && statusB !== 'running') return -1;
+            if (statusB === 'running' && statusA !== 'running') return 1;
+            
+            // Then alphabetical
+            return a.name.localeCompare(b.name);
+        });
+        
+        const activeRoutes = sortedRoutes.filter(route => {
             const status = this.getRouteStatus(route);
             return status === 'running' || status === 'late';
         });
         
-        const activeRoutes = filteredRoutes;
-        
         document.getElementById('stats').textContent = `${activeRoutes.length} Active Routes`;
-        
-        // Update page title with active route count
-        document.title = `Harvard Go! - ${activeRoutes.length} Active Routes`;
-        
-        if (filteredRoutes.length === 0) {
-            document.getElementById('routes').innerHTML = `
-                <div class="empty-state">
-                    <h3>No Active Routes</h3>
-                    <p>No shuttles are currently running. Check back during service hours.</p>
-                </div>
-            `;
-            return;
-        }
-        
-        // Sort routes: running/late first, then not running
-        const sortedRoutes = filteredRoutes.sort((a, b) => {
-            const statusA = this.getRouteStatus(a);
-            const statusB = this.getRouteStatus(b);
-            
-            // Both have same status, maintain original order
-            if (statusA === statusB) return 0;
-            
-            // running and late come before not-running
-            if ((statusA === 'running' || statusA === 'late') && statusB === 'not-running') return -1;
-            if ((statusB === 'running' || statusB === 'late') && statusA === 'not-running') return 1;
-            
-            // late comes after running but before not-running
-            if (statusA === 'running' && statusB === 'late') return -1;
-            if (statusA === 'late' && statusB === 'running') return 1;
-            
-            return 0;
-        });
+        this.updatePageTitle();
         
         const routesHtml = sortedRoutes.map(route => {
             const status = this.getRouteStatus(route);
-            let statusText, statusIcon;
-            
-            if (status === 'running') {
-                statusText = 'Running';
-                statusIcon = '🚌';
-            } else if (status === 'late') {
-                statusText = 'Delayed';
-                statusIcon = '⚠️';
-            } else {
-                statusText = 'Not Running';
-                statusIcon = '⏸️';
-            }
+            const statusInfo = this.getStatusInfo(status);
             
             return `
                 <div class="route status-${status}" onclick="selectRoute('${route.id}')">
                     <div class="route-name">${route.shortName}</div>
-                    <div class="route-details">${route.name} • ${statusIcon} ${statusText}</div>
+                    <div class="route-details">${route.name} • ${statusInfo.icon} ${statusInfo.text}</div>
                 </div>
             `;
         }).join('');
@@ -240,15 +159,20 @@ class ShuttleTracker {
         document.getElementById('routes').innerHTML = routesHtml;
     }
     
-    setupEventListeners() {
-        // No search functionality needed
+    getStatusInfo(status) {
+        const statusMap = {
+            'running': { icon: '🚌', text: 'Running' },
+            'late': { icon: '⚠️', text: 'Delayed' },
+            'not-running': { icon: '⏸️', text: 'Not Running' }
+        };
+        return statusMap[status] || statusMap['not-running'];
     }
     
     selectRoute(routeId) {
         const route = this.routes.find(r => r.id === routeId);
         if (!route) return;
         
-        // Update selected route styling
+        // Update selected styling
         document.querySelectorAll('.route').forEach(el => {
             el.classList.remove('selected');
         });
@@ -258,28 +182,141 @@ class ShuttleTracker {
             selectedElement.classList.add('selected');
         }
         
-        // Show alert
+        // Show route info
         const status = this.getRouteStatus(route);
-        let statusEmoji, statusText;
+        const statusInfo = this.getStatusInfo(status);
         
-        if (status === 'running') {
-            statusEmoji = '🚌';
-            statusText = 'Currently Running';
-        } else if (status === 'late') {
-            statusEmoji = '⚠️';
-            statusText = 'Running Late';
-        } else {
-            statusEmoji = '⏸️';
-            statusText = 'Not Running';
+        alert(`Harvard Go! - Selected Route\n\n${route.name} (${route.shortName})\nStatus: ${statusInfo.icon} ${statusInfo.text}`);
+    }
+    
+    initCalendar() {
+        const today = new Date();
+        const currentDay = today.getDay();
+        const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        
+        let calendarHtml = '';
+        
+        // Get Sunday of current week (start of week)
+        const sunday = new Date(today);
+        sunday.setDate(today.getDate() - currentDay);
+        
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(sunday);
+            date.setDate(sunday.getDate() + i);
+            
+            const dayName = weekDays[i];
+            const dayDate = (date.getMonth() + 1) + '/' + date.getDate();
+            const isActive = i === currentDay;
+            const dayType = this.getDayType(i);
+            
+            calendarHtml += `
+                <button class="day-btn ${isActive ? 'active' : ''}" onclick="showDaySchedule(${i})">
+                    <span class="day-name">${dayName}</span>
+                    <span class="day-date">${dayDate}</span>
+                    <span class="day-schedule">${dayType}</span>
+                </button>
+            `;
         }
         
-        alert(`Harvard Go! - Selected Route\n\n${route.name} (${route.shortName})\nStatus: ${statusEmoji} ${statusText}`);
+        document.getElementById('week-days').innerHTML = calendarHtml;
+        
+        // Show today's schedule by default
+        this.showDaySchedule(currentDay);
+    }
+    
+    getDayType(dayIndex) {
+        if (dayIndex === 0 || dayIndex === 6) {
+            return 'Weekend';
+        } else {
+            return 'Weekday';
+        }
+    }
+    
+    showDaySchedule(dayIndex) {
+        // Update active button
+        document.querySelectorAll('.day-btn').forEach((btn, index) => {
+            btn.classList.toggle('active', index === dayIndex);
+        });
+        
+        const schedule = this.getDaySchedule(dayIndex);
+        const scheduleHtml = schedule.map(block => {
+            const routeChips = block.routes.map(route => 
+                `<span class="route-chip">${route}</span>`
+            ).join('');
+            
+            return `
+                <div class="schedule-time-block">
+                    <div class="time-label">${block.time}</div>
+                    <div class="route-chips">${routeChips}</div>
+                </div>
+            `;
+        }).join('');
+        
+        document.getElementById('schedule-details').innerHTML = scheduleHtml;
+    }
+    
+    getDaySchedule(dayIndex) {
+        // Sunday = 0, Saturday = 6
+        const isWeekend = dayIndex === 0 || dayIndex === 6;
+        
+        if (isWeekend) {
+            return [
+                { time: '8:00 AM', routes: ['1636', 'AL'] },
+                { time: '9:00 AM', routes: ['1636', 'AL'] },
+                { time: '10:00 AM', routes: ['1636', 'AL', 'QE'] },
+                { time: '11:00 AM', routes: ['1636', 'AL', 'QE'] },
+                { time: '12:00 PM', routes: ['1636', 'AL', 'QE'] },
+                { time: '1:00 PM', routes: ['1636', 'AL', 'QE'] },
+                { time: '2:00 PM', routes: ['1636', 'AL', 'QE'] },
+                { time: '3:00 PM', routes: ['1636', 'AL', 'QE'] },
+                { time: '4:00 PM', routes: ['1636', 'AL', 'QE'] },
+                { time: '5:00 PM', routes: ['1636', 'AL', 'QE'] },
+                { time: '6:00 PM', routes: ['1636', 'AL'] },
+                { time: '7:00 PM', routes: ['1636', 'AL'] },
+                { time: '8:00 PM', routes: ['1636', 'AL'] },
+                { time: '9:00 PM', routes: ['1636', 'AL'] },
+                { time: '10:00 PM', routes: ['1636', 'AL'] },
+                { time: '11:00 PM', routes: ['ON'] },
+                { time: '12:00 AM', routes: ['ON'] },
+                { time: '1:00 AM', routes: ['ON'] },
+                { time: '2:00 AM', routes: ['ON'] }
+            ];
+        } else {
+            return [
+                { time: '6:00 AM', routes: ['1636'] },
+                { time: '7:00 AM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
+                { time: '8:00 AM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
+                { time: '9:00 AM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
+                { time: '10:00 AM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
+                { time: '11:00 AM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
+                { time: '12:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
+                { time: '1:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
+                { time: '2:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
+                { time: '3:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
+                { time: '4:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
+                { time: '5:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
+                { time: '6:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
+                { time: '7:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
+                { time: '8:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
+                { time: '9:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
+                { time: '10:00 PM', routes: ['1636', 'AL', 'BC', 'CC', 'ME', 'QE', 'QYE'] },
+                { time: '11:00 PM', routes: ['ON'] },
+                { time: '12:00 AM', routes: ['ON'] },
+                { time: '1:00 AM', routes: ['ON'] },
+                { time: '2:00 AM', routes: ['ON'] }
+            ];
+        }
     }
 }
 
+// Global functions
 function selectRoute(routeId) {
     tracker.selectRoute(routeId);
 }
 
-// Initialize the app
+function showDaySchedule(dayIndex) {
+    tracker.showDaySchedule(dayIndex);
+}
+
+// Initialize app
 const tracker = new ShuttleTracker();
