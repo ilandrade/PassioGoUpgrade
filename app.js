@@ -22,7 +22,7 @@ class ShuttleTracker {
         this.updateDateTime();
         this.fetchRealtimeData();
         this.renderRoutes();
-        this.initCalendar();
+        this.initScheduleTabs();
         
         // Update every 30 seconds
         setInterval(() => {
@@ -123,26 +123,42 @@ class ShuttleTracker {
     }
     
     renderRoutes() {
-        // Show all routes with their current status
-        const sortedRoutes = this.routes.sort((a, b) => {
-            const statusA = this.getRouteStatus(a);
-            const statusB = this.getRouteStatus(b);
-            
-            // Running routes first
-            if (statusA === 'running' && statusB !== 'running') return -1;
-            if (statusB === 'running' && statusA !== 'running') return 1;
-            
-            // Then alphabetical
-            return a.name.localeCompare(b.name);
-        });
-        
-        const activeRoutes = sortedRoutes.filter(route => {
+        // Separate routes into active and inactive
+        const activeRoutes = this.routes.filter(route => {
             const status = this.getRouteStatus(route);
             return status === 'running' || status === 'late';
         });
         
+        const inactiveRoutes = this.routes.filter(route => {
+            const status = this.getRouteStatus(route);
+            return status === 'not-running';
+        });
+        
         document.getElementById('stats').textContent = `${activeRoutes.length} Active Routes`;
         this.updatePageTitle();
+        
+        // Render active routes
+        this.renderActiveRoutes(activeRoutes);
+        
+        // Render inactive routes in dropdown
+        this.renderInactiveRoutes(inactiveRoutes);
+    }
+    
+    renderActiveRoutes(routes) {
+        const container = document.getElementById('active-routes');
+        
+        if (routes.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <h3>No Active Routes</h3>
+                    <p>No shuttles are currently running. Check back during service hours.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Sort active routes alphabetically
+        const sortedRoutes = routes.sort((a, b) => a.name.localeCompare(b.name));
         
         const routesHtml = sortedRoutes.map(route => {
             const status = this.getRouteStatus(route);
@@ -156,7 +172,31 @@ class ShuttleTracker {
             `;
         }).join('');
         
-        document.getElementById('routes').innerHTML = routesHtml;
+        container.innerHTML = routesHtml;
+    }
+    
+    renderInactiveRoutes(routes) {
+        const container = document.getElementById('inactive-routes');
+        const dropdown = document.getElementById('inactive-dropdown');
+        
+        if (routes.length === 0) {
+            dropdown.style.display = 'none';
+            return;
+        }
+        
+        dropdown.style.display = 'block';
+        
+        // Sort inactive routes alphabetically
+        const sortedRoutes = routes.sort((a, b) => a.name.localeCompare(b.name));
+        
+        const routesHtml = sortedRoutes.map(route => `
+            <div class="route status-not-running" onclick="selectRoute('${route.id}')">
+                <div class="route-name">${route.shortName}</div>
+                <div class="route-details">${route.name} • ⏸️ Not Running</div>
+            </div>
+        `).join('');
+        
+        container.innerHTML = routesHtml;
     }
     
     getStatusInfo(status) {
@@ -189,56 +229,28 @@ class ShuttleTracker {
         alert(`Harvard Go! - Selected Route\n\n${route.name} (${route.shortName})\nStatus: ${statusInfo.icon} ${statusInfo.text}`);
     }
     
-    initCalendar() {
-        const today = new Date();
-        const currentDay = today.getDay();
-        const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        
-        let calendarHtml = '';
-        
-        // Get Sunday of current week (start of week)
-        const sunday = new Date(today);
-        sunday.setDate(today.getDate() - currentDay);
-        
-        for (let i = 0; i < 7; i++) {
-            const date = new Date(sunday);
-            date.setDate(sunday.getDate() + i);
-            
-            const dayName = weekDays[i];
-            const dayDate = (date.getMonth() + 1) + '/' + date.getDate();
-            const isActive = i === currentDay;
-            const dayType = this.getDayType(i);
-            
-            calendarHtml += `
-                <button class="day-btn ${isActive ? 'active' : ''}" onclick="showDaySchedule(${i})">
-                    <span class="day-name">${dayName}</span>
-                    <span class="day-date">${dayDate}</span>
-                    <span class="day-schedule">${dayType}</span>
-                </button>
-            `;
-        }
-        
-        document.getElementById('week-days').innerHTML = calendarHtml;
-        
-        // Show today's schedule by default
-        this.showDaySchedule(currentDay);
+    initScheduleTabs() {
+        // Show weekday schedule by default (since today is Thursday)
+        this.showScheduleType('weekday');
     }
     
-    getDayType(dayIndex) {
-        if (dayIndex === 0 || dayIndex === 6) {
-            return 'Weekend';
-        } else {
-            return 'Weekday';
-        }
-    }
-    
-    showDaySchedule(dayIndex) {
+    showScheduleType(type) {
         // Update active button
-        document.querySelectorAll('.day-btn').forEach((btn, index) => {
-            btn.classList.toggle('active', index === dayIndex);
+        document.querySelectorAll('.schedule-tab-btn').forEach(btn => {
+            btn.classList.remove('active');
         });
         
-        const schedule = this.getDaySchedule(dayIndex);
+        if (type === 'weekday') {
+            document.querySelectorAll('.schedule-tab-btn')[0].classList.add('active');
+        } else {
+            document.querySelectorAll('.schedule-tab-btn')[1].classList.add('active');
+        }
+        
+        const schedule = this.getDaySchedule(type === 'weekend');
+        this.renderSchedule(schedule);
+    }
+    
+    renderSchedule(schedule) {
         const scheduleHtml = schedule.map(block => {
             const routeChips = block.routes.map(route => 
                 `<span class="route-chip">${route}</span>`
@@ -255,10 +267,7 @@ class ShuttleTracker {
         document.getElementById('schedule-details').innerHTML = scheduleHtml;
     }
     
-    getDaySchedule(dayIndex) {
-        // Sunday = 0, Saturday = 6
-        const isWeekend = dayIndex === 0 || dayIndex === 6;
-        
+    getDaySchedule(isWeekend) {
         if (isWeekend) {
             return [
                 { time: '8:00 AM', routes: ['1636', 'AL'] },
@@ -314,8 +323,12 @@ function selectRoute(routeId) {
     tracker.selectRoute(routeId);
 }
 
-function showDaySchedule(dayIndex) {
-    tracker.showDaySchedule(dayIndex);
+function showScheduleType(type) {
+    tracker.showScheduleType(type);
+}
+
+function toggleDropdown() {
+    document.getElementById('inactive-dropdown').classList.toggle('open');
 }
 
 // Initialize app
