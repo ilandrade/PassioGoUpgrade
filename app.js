@@ -22,7 +22,7 @@ class ShuttleTracker {
         this.updateDateTime();
         this.fetchRealtimeData();
         this.renderRoutes();
-        this.initScheduleTabs();
+        this.initScheduleViews();
         
         // Update every 30 seconds
         setInterval(() => {
@@ -229,28 +229,14 @@ class ShuttleTracker {
         alert(`Harvard Go! - Selected Route\n\n${route.name} (${route.shortName})\nStatus: ${statusInfo.icon} ${statusInfo.text}`);
     }
     
-    initScheduleTabs() {
-        // Show weekday schedule by default (since today is Thursday)
-        this.showScheduleType('weekday');
+    initScheduleViews() {
+        // Load weekday and weekend schedules
+        this.renderScheduleView('weekday', false);
+        this.renderScheduleView('weekend', true);
     }
     
-    showScheduleType(type) {
-        // Update active button
-        document.querySelectorAll('.schedule-tab-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        if (type === 'weekday') {
-            document.querySelectorAll('.schedule-tab-btn')[0].classList.add('active');
-        } else {
-            document.querySelectorAll('.schedule-tab-btn')[1].classList.add('active');
-        }
-        
-        const schedule = this.getDaySchedule(type === 'weekend');
-        this.renderSchedule(schedule);
-    }
-    
-    renderSchedule(schedule) {
+    renderScheduleView(viewId, isWeekend) {
+        const schedule = this.getDaySchedule(isWeekend);
         const scheduleHtml = schedule.map(block => {
             const routeChips = block.routes.map(route => 
                 `<span class="route-chip">${route}</span>`
@@ -264,7 +250,7 @@ class ShuttleTracker {
             `;
         }).join('');
         
-        document.getElementById('schedule-details').innerHTML = scheduleHtml;
+        document.getElementById(`${viewId}-schedule`).innerHTML = scheduleHtml;
     }
     
     getDaySchedule(isWeekend) {
@@ -323,8 +309,28 @@ function selectRoute(routeId) {
     tracker.selectRoute(routeId);
 }
 
-function showScheduleType(type) {
-    tracker.showScheduleType(type);
+function showView(view) {
+    // Hide all views
+    document.querySelectorAll('.routes').forEach(routeView => {
+        routeView.classList.remove('active');
+    });
+    
+    // Remove active from all buttons
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected view and activate button
+    document.getElementById(`${view}-view`).classList.add('active');
+    
+    // Activate the clicked button
+    if (view === 'routes') {
+        document.querySelectorAll('.nav-btn')[0].classList.add('active');
+    } else if (view === 'weekday') {
+        document.querySelectorAll('.nav-btn')[1].classList.add('active');
+    } else if (view === 'weekend') {
+        document.querySelectorAll('.nav-btn')[2].classList.add('active');
+    }
 }
 
 function toggleDropdown() {
