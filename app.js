@@ -1,13 +1,94 @@
-// Harvard Go! Shuttle Tracker
-// MAPBOX_TOKEN is loaded from config.js (gitignored)
+// =============================================================================
+// Harvard Go! — Shuttle Tracker
+// Fetches live PassioGo bus data and displays routes, stops, and schedules
+// for Harvard University's shuttle system.
+// MAPBOX_TOKEN is loaded from config.js (not committed to git)
+// =============================================================================
+
+// --- Constants ---------------------------------------------------------------
+
+// Maps PassioGo API route names → our internal shortName identifiers.
+// Used to match live vehicle data and route polylines to our route definitions.
+const API_NAME_MAP = {
+    'Allston Loop':         'AL',
+    'Overnight':            'ON',
+    'Quad Express':         'QE',
+    'Mather Express':       'ME',
+    'Quad SEC Direct':      'QSEC',
+    'Quad Yard Express':    'QYE',
+    'Quad Stadium Express': 'QSD',
+    "1636'er":              '1636',
+    'Crimson Cruiser':      'CC',
+    'SEC Express':          'SE',
+};
+
+// GPS coordinates for each named bus stop on campus.
+const STOP_COORDS = {
+    'Mather House':                [-71.115333, 42.368759],
+    'The Inn':                     [-71.115427, 42.372127],
+    'Widener Gate':                [-71.116972, 42.372844],
+    'Memorial Hall':               [-71.114393, 42.376452],
+    'Lamont Library':              [-71.115007, 42.372867],
+    'Quad':                        [-71.125325, 42.381867],
+    'Radcliffe Yard':              [-71.122120, 42.376500],
+    'Mass and Garden':             [-71.119467, 42.375187],
+    'Law School':                  [-71.119937, 42.377977],
+    'Maxwell Dworkin':             [-71.116630, 42.378933],
+    'Winthrop House':              [-71.117267, 42.371468],
+    'SEC':                         [-71.125393, 42.363329],
+    "Barry's Corner":              [-71.127742, 42.363958],
+    'Stadium':                     [-71.124887, 42.367121],
+    'Kennedy School':              [-71.120953, 42.371496],
+    'Harvard Square':              [-71.119967, 42.372727],
+    'Harvard Square (Southbound)': [-71.119734, 42.373379],
+    'Kennedy School (Southbound)': [-71.121339, 42.371203],
+    'Stadium (Southbound)':        [-71.125015, 42.367024],
+    "Barry's Corner (Southbound)": [-71.127862, 42.363936],
+    '1 Western Ave':               [-71.119075, 42.364114],
+    'Science Center':              [-71.115974, 42.376902],
+    'Leverett House':              [-71.116713, 42.370084],
+    'Cambridge Common':            [-71.122418, 42.376995],
+};
+
+// Converts a schedule time string array to minutes-since-midnight.
+// Handles bare times (no AM/PM) by inferring the half-day from context.
+function toMinList(times) {
+    let isPM = null;
+    let lastH = -1;
+    return times.map(t => {
+        t = t.trim();
+        if (!t || t === '-') return null;
+        const hasPM = /pm/i.test(t);
+        const hasAM = /am/i.test(t);
+        t = t.replace(/[apm]/gi, '').trim();
+        let [h, m] = t.split(':').map(Number);
+        m = m || 0;
+        if (hasPM) isPM = true;
+        else if (hasAM) isPM = false;
+        if (isPM === null) isPM = false;
+        if (!hasPM && !hasAM && !isPM) {
+            if (h === 12 && lastH >= 10) isPM = true;
+            else if (h < lastH && lastH >= 11) isPM = true;
+            else if (isPM && h < lastH && h !== 12) isPM = true;
+        }
+        let h24 = h;
+        if (isPM && h !== 12) h24 = h + 12;
+        if (!isPM && h === 12) h24 = 0;
+        lastH = h;
+        return h24 * 60 + m;
+    });
+}
+
+// --- Main Class --------------------------------------------------------------
 
 class ShuttleTracker {
     constructor() {
         this.map = null;
         this.shuttleMarkers = [];
         this.stopMarkers = [];
-        this.hiddenRouteIds = new Set();
-        this.apiRouteIds = {}; // shortName → API routeId for map layer lookups
+        this.hiddenRouteIds = new Set(); // set of API routeIds currently hidden on map
+        this.apiRouteIds = {};            // shortName → API routeId, populated after drawRouteLines
+        this.routeTimetables = null;      // populated in drawStopMarkers
         this.routes = [
             { id: '777',   name: "1636'er",           shortName: '1636', color: '#0099FF', schedule: 'Weekends' },
             { id: '778',   name: 'Allston Loop',        shortName: 'AL',   color: '#a50606', schedule: '7:00am – 12:08am, Daily' },
@@ -25,13 +106,17 @@ class ShuttleTracker {
         this.init();
     }
     
+    // -------------------------------------------------------------------------
+    // Lifecycle
+    // -------------------------------------------------------------------------
+
     async init() {
         this.updateDateTime();
         await this.fetchRealtimeData();
         this.renderRoutes();
         this.initMap();
-        
-        // Update every 30 seconds
+
+        // Refresh all live data every 30 seconds
         setInterval(async () => {
             this.updateDateTime();
             await this.fetchRealtimeData();
@@ -40,10 +125,14 @@ class ShuttleTracker {
             if (this.map) this.drawStopMarkers();
             this.updatePageTitle();
         }, 30000);
-        
+
         this.updatePageTitle();
     }
     
+    // -------------------------------------------------------------------------
+    // Map Initialization & Route Lines
+    // -------------------------------------------------------------------------
+
     initMap() {
         if (!mapboxgl || MAPBOX_TOKEN === 'YOUR_MAPBOX_TOKEN_HERE') {
             document.getElementById('map').innerHTML = `
@@ -94,26 +183,10 @@ class ShuttleTracker {
                 routeColors[routeId] = routeData[1] || '#A51C30';
             }
 
-            // Explicit map: API route name → our route shortName for reliable matching
-            const apiNameMap = {
-                'Allston Loop':          'AL',
-                'Overnight':             'ON',
-                'Quad Express':          'QE',
-                'Mather Express':        'ME',
-                'Quad SEC Direct':       'QSEC',
-                'Quad Yard Express':     'QYE',
-                'Quad Stadium Express':  'QSD',
-                "1636'er":               '1636',
-                'Crimson Cruiser':       'CC',
-                'SEC Express':           'SE',
-            };
-
             // Draw each route using its dense GPS path
             for (const [routeId, segments] of Object.entries(routePoints)) {
                 const apiRouteName = routes[routeId] ? routes[routeId][0] : '';
-
-                // Match to our route definition via explicit map
-                const shortName = apiNameMap[apiRouteName];
+                const shortName = API_NAME_MAP[apiRouteName];
                 const routeDef = shortName ? this.routes.find(r => r.shortName === shortName) : null;
 
                 const color = routeDef ? routeDef.color : (routeColors[routeId] || '#A51C30');
@@ -181,72 +254,15 @@ class ShuttleTracker {
         });
     }
 
+    // -------------------------------------------------------------------------
+    // Stop Markers & Timetable Data
+    // -------------------------------------------------------------------------
+
     drawStopMarkers() {
         if (!this.map) return;
 
-        // Clear existing stop markers
         this.stopMarkers.forEach(m => m.remove());
         this.stopMarkers = [];
-
-        // Stop coordinates from PassioGo API
-        const STOPS = {
-            'Mather House':             [-71.115333, 42.368759],
-            'The Inn':                  [-71.115427, 42.372127],
-            'Widener Gate':             [-71.116972, 42.372844],
-            'Memorial Hall':            [-71.114393, 42.376452],
-            'Lamont Library':           [-71.115007, 42.372867],
-            'Quad':                     [-71.125325, 42.381867],
-            'Radcliffe Yard':           [-71.122120, 42.376500],
-            'Mass and Garden':          [-71.119467, 42.375187],
-            'Law School':               [-71.119937, 42.377977],
-            'Maxwell Dworkin':          [-71.116630, 42.378933],
-            'Winthrop House':           [-71.117267, 42.371468],
-            'SEC':                      [-71.125393, 42.363329],
-            "Barry's Corner":           [-71.127742, 42.363958],
-            'Stadium':                  [-71.124887, 42.367121],
-            'Kennedy School':           [-71.120953, 42.371496],
-            'Harvard Square':           [-71.119967, 42.372727],
-            'Harvard Square (Southbound)': [-71.119734, 42.373379],
-            'Kennedy School (Southbound)':  [-71.121339, 42.371203],
-            'Stadium (Southbound)':         [-71.125015, 42.367024],
-            "Barry's Corner (Southbound)":  [-71.127862, 42.363936],
-            '1 Western Ave':            [-71.119075, 42.364114],
-            'Science Center':           [-71.115974, 42.376902],
-            'Leverett House':           [-71.116713, 42.370084],
-            'Winthrop House':           [-71.117267, 42.371468],
-            'Cambridge Common':          [-71.122418, 42.376995],
-        };
-
-        // Convert a list of schedule times to minutes-since-midnight.
-        // The first entry may have AM/PM; subsequent bare times continue in the same
-        // half-day, rolling over to the next half when the hour decreases.
-        const toMinList = (times) => {
-            let isPM = null;
-            let lastH = -1;
-            return times.map(t => {
-                t = t.trim();
-                if (!t || t === '-') return null;
-                const hasPM = /pm/i.test(t);
-                const hasAM = /am/i.test(t);
-                t = t.replace(/[apm]/gi, '').trim();
-                let [h, m] = t.split(':').map(Number);
-                m = m || 0;
-                if (hasPM) isPM = true;
-                else if (hasAM) isPM = false;
-                if (isPM === null) isPM = false;
-                // Flip to PM when: no explicit suffix, was AM, and hour rolled from 11→12 or 11→1..
-                if (!hasPM && !hasAM && !isPM) {
-                    if (h === 12 && lastH >= 10) isPM = true;          // 11:xx → 12:xx = noon
-                    else if (h < lastH && lastH >= 11) isPM = true;    // 11:xx → 1:xx = 1 PM
-                    else if (isPM && h < lastH && h !== 12) isPM = true; // already PM, hour wrapped
-                }
-                let h24 = h;
-                if (isPM && h !== 12) h24 = h + 12;
-                if (!isPM && h === 12) h24 = 0;
-                lastH = h;
-                return h24 * 60 + m;
-            });
-        };
 
         // Mather Express (weekdays)
         const ME_times = {
@@ -603,10 +619,13 @@ class ShuttleTracker {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Live Vehicle Markers
+    // -------------------------------------------------------------------------
+
     updateMapMarkers() {
         if (!this.map) return;
 
-        // Remove existing markers
         this.shuttleMarkers.forEach(m => m.remove());
         this.shuttleMarkers = [];
 
@@ -615,27 +634,13 @@ class ShuttleTracker {
             return;
         }
 
-        // Same explicit map used in drawRouteLines
-        const apiNameMap = {
-            'Allston Loop':          'AL',
-            'Overnight':             'ON',
-            'Quad Express':          'QE',
-            'Mather Express':        'ME',
-            'Quad SEC Direct':       'QSEC',
-            'Quad Yard Express':     'QYE',
-            'Quad Stadium Express':  'QSD',
-            "1636'er":               '1636',
-            'Crimson Cruiser':       'CC',
-            'SEC Express':           'SE',
-        };
-
         this.realtimeData.vehicles.forEach(vehicle => {
             const lat = parseFloat(vehicle.latitude);
             const lng = parseFloat(vehicle.longitude);
             if (!lat || !lng) return;
 
             const apiRouteName = vehicle.route || '';
-            const mappedShort = apiNameMap[apiRouteName];
+            const mappedShort = API_NAME_MAP[apiRouteName];
             const routeDef = mappedShort ? this.routes.find(r => r.shortName === mappedShort) : null;
 
             // Skip vehicles whose route is outside scheduled hours
@@ -674,6 +679,10 @@ class ShuttleTracker {
 
         this.updateRouteTogglePanel();
     }
+
+    // -------------------------------------------------------------------------
+    // Route Toggle Panel (Map tab)
+    // -------------------------------------------------------------------------
 
     updateRouteTogglePanel() {
         const panel = document.getElementById('route-toggle-panel');
@@ -745,6 +754,10 @@ class ShuttleTracker {
         this.updateRouteTogglePanel();
     }
 
+    // -------------------------------------------------------------------------
+    // Data Fetching (PassioGo API)
+    // -------------------------------------------------------------------------
+
     async fetchRealtimeData() {
         try {
             // Fetch live vehicles via POST with JSON body (PassioGo API format)
@@ -781,18 +794,17 @@ class ShuttleTracker {
 
         // Within scheduled hours: confirm with live vehicles if available
         if (this.realtimeData && this.realtimeData.vehicles) {
-            const apiNameMap = {
-                'Allston Loop': 'AL', 'Overnight': 'ON', 'Quad Express': 'QE',
-                'Mather Express': 'ME', 'Quad SEC Direct': 'QSEC', 'Quad Yard Express': 'QYE',
-                'Quad Stadium Express': 'QSD', "1636'er": '1636', 'Crimson Cruiser': 'CC', 'SEC Express': 'SE',
-            };
-            const hasLive = this.realtimeData.vehicles.some(v => apiNameMap[v.route] === route.shortName);
+            const hasLive = this.realtimeData.vehicles.some(v => API_NAME_MAP[v.route] === route.shortName);
             if (hasLive) return 'running';
         }
 
         return staticStatus;
     }
     
+    // -------------------------------------------------------------------------
+    // Schedule Logic
+    // -------------------------------------------------------------------------
+
     getStaticRouteStatus(route) {
         const h = new Date().getHours();
         const day = new Date().getDay(); // 0=Sun,1=Mon..5=Fri,6=Sat
@@ -826,6 +838,10 @@ class ShuttleTracker {
         }
     }
     
+    // -------------------------------------------------------------------------
+    // UI Utilities
+    // -------------------------------------------------------------------------
+
     updatePageTitle() {
         const activeRoutes = this.routes.filter(route => {
             const status = this.getRouteStatus(route);
@@ -870,31 +886,18 @@ class ShuttleTracker {
         this.renderInactiveRoutes(inactiveRoutes);
     }
     
+    // -------------------------------------------------------------------------
+    // Live Routes View
+    // -------------------------------------------------------------------------
+
     getVehiclesForRoute(route) {
         if (!this.realtimeData || !this.realtimeData.vehicles) return [];
-        const apiNameMap = {
-            'Allston Loop': 'AL', 'Overnight': 'ON', 'Quad Express': 'QE',
-            'Mather Express': 'ME', 'Quad SEC Direct': 'QSEC', 'Quad Yard Express': 'QYE',
-            'Quad Stadium Express': 'QSD', "1636'er": '1636', 'Crimson Cruiser': 'CC', 'SEC Express': 'SE',
-        };
-        return this.realtimeData.vehicles.filter(v => apiNameMap[v.route] === route.shortName);
+        return this.realtimeData.vehicles.filter(v => API_NAME_MAP[v.route] === route.shortName);
     }
 
     getNearestStop(lat, lng) {
-        const STOPS = {
-            'Mather House':[-71.115333,42.368759],'The Inn':[-71.115427,42.372127],
-            'Widener Gate':[-71.116972,42.372844],'Memorial Hall':[-71.114393,42.376452],
-            'Lamont Library':[-71.115007,42.372867],'Quad':[-71.125325,42.381867],
-            'Radcliffe Yard':[-71.122120,42.376500],'Mass and Garden':[-71.119467,42.375187],
-            'Law School':[-71.119937,42.377977],'Maxwell Dworkin':[-71.116630,42.378933],
-            'Winthrop House':[-71.117267,42.371468],'SEC':[-71.125393,42.363329],
-            "Barry's Corner":[-71.127742,42.363958],'Stadium':[-71.124887,42.367121],
-            'Kennedy School':[-71.120953,42.371496],'Harvard Square':[-71.119967,42.372727],
-            '1 Western Ave':[-71.119075,42.364114],'Science Center':[-71.115974,42.376902],
-            'Cambridge Common':[-71.122418,42.376995],
-        };
         let nearest = null, minDist = Infinity;
-        for (const [name, [sLng, sLat]] of Object.entries(STOPS)) {
+        for (const [name, [sLng, sLat]] of Object.entries(STOP_COORDS)) {
             const d = Math.hypot(lat - sLat, lng - sLng);
             if (d < minDist) { minDist = d; nearest = name; }
         }
@@ -986,15 +989,6 @@ class ShuttleTracker {
         container.innerHTML = routesHtml;
     }
     
-    getStatusInfo(status) {
-        const statusMap = {
-            'running': { icon: '🚌', text: 'Running' },
-            'late': { icon: '⚠️', text: 'Delayed' },
-            'not-running': { icon: '⏸️', text: 'Not Running' }
-        };
-        return statusMap[status] || statusMap['not-running'];
-    }
-    
     selectRoute(routeId) {
         // Navigate to schedule tab and highlight the route
         showView('schedule');
@@ -1003,6 +997,10 @@ class ShuttleTracker {
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 100);
     }
+
+    // -------------------------------------------------------------------------
+    // Schedules View
+    // -------------------------------------------------------------------------
 
     renderScheduleView() {
         const container = document.getElementById('schedule-content');
@@ -1057,10 +1055,7 @@ class ShuttleTracker {
     
 }
 
-// Global functions
-function selectRoute(routeId) {
-    tracker.selectRoute(routeId);
-}
+// --- Global UI Functions -----------------------------------------------------
 
 function showView(view) {
     // Hide all views
@@ -1088,9 +1083,6 @@ function showView(view) {
     }
 }
 
-function toggleDropdown() {
-    document.getElementById('inactive-dropdown').classList.toggle('open');
-}
+// --- App Entry Point ---------------------------------------------------------
 
-// Initialize app
 const tracker = new ShuttleTracker();

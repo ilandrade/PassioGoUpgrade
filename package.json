@@ -1,38 +1,27 @@
 {
-  "name": "passiogo-route-picker",
+  "name": "harvard-go",
   "version": "1.0.0",
-  "description": "A comprehensive JavaScript-based route picker application that integrates with PassioGo transit data and Google Maps API",
+  "description": "Harvard Go! — A real-time shuttle tracker for Harvard University's campus bus system. Displays live vehicle positions, route polylines, stop schedules, and full timetables using the PassioGo API and Mapbox GL JS.",
   "main": "app.js",
   "scripts": {
-    "start": "python3 -m http.server 8000",
-    "dev": "python3 -m http.server 8000 --bind 127.0.0.1",
-    "build": "echo 'No build process needed - static files ready'",
-    "test": "echo 'No tests specified yet'",
-    "lint": "echo 'No linting configured yet'"
+    "start": "python3 -m http.server 8080",
+    "dev": "python3 -m http.server 8080 --bind 127.0.0.1"
   },
   "keywords": [
+    "harvard",
+    "shuttle",
     "transit",
-    "bus",
-    "routes",
     "passiogo",
-    "google-maps",
-    "javascript",
+    "mapbox",
     "real-time",
     "schedule"
   ],
-  "author": "PassioGo Development Team",
+  "author": "Isabella Andrade",
   "license": "MIT",
   "dependencies": {},
   "devDependencies": {},
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/passiogo-route-picker.git"
-  },
-  "bugs": {
-    "url": "https://github.com/your-org/passiogo-route-picker/issues"
-  },
-  "homepage": "https://github.com/your-org/passiogo-route-picker#readme",
-  "engines": {
-    "node": ">=12.0.0"
+    "url": "https://github.com/ilandrade/PassioGoUpgrade.git"
   }
 }
