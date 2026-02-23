@@ -566,7 +566,7 @@ class ShuttleTracker {
         };
 
         // Draw a dot for every stop that has any service registered today
-        for (const [stopName, coords] of Object.entries(STOPS)) {
+        for (const [stopName, coords] of Object.entries(STOP_COORDS)) {
             if (!allStopsToday[stopName]) continue; // no service at all today
 
             const nextBuses = getNextBuses(stopName);
