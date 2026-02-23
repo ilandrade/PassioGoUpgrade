@@ -1,5 +1,5 @@
 // Harvard Go! Shuttle Tracker
-const MAPBOX_TOKEN = 'MAPBOX_TOKEN_REMOVED';
+// MAPBOX_TOKEN is loaded from config.js (gitignored)
 
 class ShuttleTracker {
     constructor() {
